@@ -1,4 +1,4 @@
-HAProxy
+Ansible role: HAProxy
 =========
 
 This role is used to install haproxy by building it from source code.
