@@ -1,0 +1,55 @@
+global
+  log /dev/log local0
+  chroot /var/lib/haproxy
+  user haproxy
+  group haproxy
+  daemon
+  ssl-dh-param-file /etc/haproxy/haproxy-dhparam-{{ haproxy_dhparam_size }}.pem
+  ssl-default-bind-options {{ haproxy_ssl_default_bind_options }}
+  ssl-default-bind-ciphers {{ haproxy_ssl_default_bind_ciphers }}
+  ssl-default-server-options {{ haproxy_ssl_default_server_options }}
+  ssl-default-server-ciphers {{ haproxy_ssl_default_server_ciphers }}
+
+defaults
+  log global
+  mode http
+  option httplog
+  option dontlognull
+  option redispatch
+  timeout connect 10s
+  timeout client 300s
+  timeout server 300s
+
+{% if haproxy_metrics_prometheus -%}
+frontend stats
+  bind *:8404
+  http-request use-service prometheus-exporter if { path /metrics }
+  stats enable
+  stats uri /stats
+  stats refresh 10s
+{% endif -%}
+
+frontend {{ haproxy_frontend_name }}
+  mode tcp
+  option tcplog
+  tcp-request inspect-delay 5s
+  tcp-request content accept if { req.ssl_hello_type 1 }
+  bind {{ haproxy_frontend_host }}:{{ haproxy_frontend_port }}
+  use_backend {{ haproxy_backend_name }}
+
+backend {{ haproxy_backend_name }}
+  mode tcp
+  option tcp-check
+  balance roundrobin
+{% if haproxy_backend_default_server_parameters is defined -%}
+  default-server {{ haproxy_backend_default_server_parameters }}
+{% endif -%}
+{% if haproxy_backend_servers -%}
+{% for server in haproxy_backend_servers -%}
+  server {{ server }} {{ server }}:{{ haproxy_backend_servers_port }} check-ssl verify none
+{% endfor -%}
+{% else -%}
+{% for server in ansible_play_batch -%}
+  server {{ hostvars[server].inventory_hostname_short }} {{ hostvars[server].inventory_hostname_short }}:{{ haproxy_backend_servers_port }} check-ssl verify none
+{% endfor -%}
+{% endif -%}

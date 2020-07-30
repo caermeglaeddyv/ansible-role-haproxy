@@ -1,0 +1,165 @@
+---
+# tasks file for haproxy
+- name: disable selinux
+  selinux:
+    state: disabled
+
+- name: reboot all machines
+  reboot:
+    msg: "Rebooting machines after disabling SELinux..."
+  tags:
+  - never
+
+- name: create haproxy downloads directory
+  file:
+    path: "{{ haproxy_local_dir }}/haproxy/downloads/"
+    state: directory
+  delegate_to: localhost
+  connection: local
+  run_once: true
+  become: no
+
+- name: download lua and haproxy source tarballs
+  get_url:
+    url: "{{ item }}"
+    dest: files/haproxy/downloads/
+  with_items:
+  - https://www.lua.org/ftp/lua-{{ haproxy_lua_version }}.tar.gz
+  - http://www.haproxy.org/download/2.0/src/haproxy-{{ haproxy_version }}.tar.gz
+  delegate_to: localhost
+  connection: local
+  run_once: true
+  become: no
+
+- name: unpack lua and haproxy source tarballs
+  unarchive:
+    src: files/haproxy/downloads/{{ item }}
+    dest: $HOME
+  with_items:
+  - lua-{{ haproxy_lua_version }}.tar.gz
+  - haproxy-{{ haproxy_version }}.tar.gz
+
+- name: install haproxy build dependencies
+  yum:
+    name:
+    - gcc
+    - openssl-devel
+    - ipset-devel
+    - iptables-devel
+    - readline-devel
+    - systemd-devel
+    state: present
+
+- name: sysctl for haproxy
+  sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: 1
+    state: present
+    ignoreerrors: yes
+    sysctl_set: yes
+  when: haproxy_nonlocal_bind
+
+- name: create haproxy group
+  group:
+    name: haproxy
+    gid: 188
+    state: present
+
+- name: create haproxy user
+  user:
+    name: haproxy
+    uid: 188
+    group: haproxy
+    home: /var/lib/haproxy
+    shell: /sbin/nologin
+    comment: HAProxy Load Balancer
+    state: present
+
+- name: create haproxy etc directory
+  file:
+    path: /etc/haproxy
+    state: directory
+
+- name: copy haproxy unit file
+  copy:
+    src: usr_lib_systemd_system_haproxy.service
+    dest: /usr/lib/systemd/system/haproxy.service
+
+- name: create haproxy chroot and dev directory
+  file:
+    path: /var/lib/{{ item }}
+    state: directory
+    owner: haproxy
+    group: haproxy
+  with_items:
+  - haproxy
+  - haproxy/dev
+
+- name: copy haproxy rsyslog file
+  copy:
+    src: etc_rsyslog.d_haproxy.conf
+    dest: /etc/rsyslog.d/haproxy.conf
+  notify:
+  - restart rsyslog
+
+- name: build lua from source
+  shell: /bin/make linux
+  args:
+    chdir: $HOME/lua-{{ haproxy_lua_version }}
+
+- name: build haproxy from source
+  shell: |
+    /bin/make -j $(nproc) TARGET=linux-glibc USE_OPENSSL=1 USE_ZLIB=1 USE_LUA=1 \
+    LUA_INC=../lua-{{ haproxy_lua_version }}/src LUA_LIB=../lua-{{ haproxy_lua_version }}/src \
+    USE_PCRE=1 USE_SYSTEMD=1 EXTRA_OBJS="contrib/prometheus-exporter/service-prometheus.o" \
+    && make install PREFIX=/usr
+  args:
+    chdir: $HOME/haproxy-{{ haproxy_version }}
+
+- name: generate openssl dhparam for haproxy
+  openssl_dhparam:
+    path: /etc/haproxy/haproxy-dhparam-{{ haproxy_dhparam_size }}.pem
+    mode: 0400
+    size: "{{ haproxy_dhparam_size }}"
+  tags:
+  - never
+
+- name: copy haproxy config
+  template:
+    src: etc_haproxy_haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    mode: 0640
+
+- name: open firewall port for frontend
+  firewalld:
+    immediate: yes
+    permanent: yes
+    port: "{{ haproxy_frontend_port }}/tcp"
+    state: enabled
+
+- name: start haproxy
+  systemd:
+    daemon_reload: yes
+    name: haproxy
+    enabled: yes
+    state: started
+
+- name: delete unneded haproxy files from remote
+  file:
+    path: $HOME/{{ item }}
+    state: absent
+  with_items:
+  - lua-{{ haproxy_lua_version }}
+  - haproxy-{{ haproxy_version }}
+
+- name: uninstall haproxy build dependencies
+  yum:
+    name:
+    - gcc
+    - openssl-devel
+    - ipset-devel
+    - iptables-devel
+    - readline-devel
+    - systemd-devel
+    state: absent
+    autoremove: yes
