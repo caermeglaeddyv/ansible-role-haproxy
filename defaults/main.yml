@@ -2,6 +2,14 @@
 # defaults file for haproxy
 
 
+# Variable which is common for most projects, used in
+# configuration files or file/directory names.
+# By default used as reference for haproxy_local_dir variable:
+haproxy_project_name: test
+
+# Localhost directory used to keep downloaded source files:
+haproxy_local_dir: files/{{ haproxy_project_name }}
+
 # HAProxy source files version to download and build from:
 haproxy_version: 2.0.9
 
