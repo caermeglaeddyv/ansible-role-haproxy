@@ -22,7 +22,7 @@
 - name: download lua and haproxy source tarballs
   get_url:
     url: "{{ item }}"
-    dest: files/haproxy/downloads/
+    dest: "{{ haproxy_local_dir }}/haproxy/downloads/"
   with_items:
   - https://www.lua.org/ftp/lua-{{ haproxy_lua_version }}.tar.gz
   - http://www.haproxy.org/download/2.0/src/haproxy-{{ haproxy_version }}.tar.gz

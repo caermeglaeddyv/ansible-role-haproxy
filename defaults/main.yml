@@ -8,7 +8,7 @@
 haproxy_project_name: test
 
 # Localhost directory used to keep downloaded source files:
-haproxy_local_dir: files/{{ haproxy_project_name }}
+haproxy_local_dir: files
 
 # HAProxy source files version to download and build from:
 haproxy_version: 2.0.9
