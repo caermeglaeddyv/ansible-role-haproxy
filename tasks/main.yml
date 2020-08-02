@@ -33,7 +33,7 @@
 
 - name: unpack lua and haproxy source tarballs
   unarchive:
-    src: files/haproxy/downloads/{{ item }}
+    src: "{{ haproxy_local_dir }}/haproxy/downloads/{{ item }}"
     dest: $HOME
   with_items:
   - lua-{{ haproxy_lua_version }}.tar.gz
