@@ -41,7 +41,7 @@ backend {{ haproxy_backend_name }}
   mode tcp
   option tcp-check
   balance roundrobin
-{% if haproxy_backend_default_server_parameters is defined -%}
+{% if haproxy_backend_default_server_parameters -%}
   default-server {{ haproxy_backend_default_server_parameters }}
 {% endif -%}
 {% if haproxy_backend_servers -%}
