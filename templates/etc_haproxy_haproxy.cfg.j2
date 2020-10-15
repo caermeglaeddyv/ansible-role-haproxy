@@ -41,15 +41,15 @@ backend {{ haproxy_backend_name }}
   mode tcp
   option tcp-check
   balance roundrobin
-{% if haproxy_backend_default_server_parameters -%}
+  {% if haproxy_backend_default_server_parameters -%}
   default-server {{ haproxy_backend_default_server_parameters }}
-{% endif -%}
-{% if haproxy_backend_servers -%}
-{% for server in haproxy_backend_servers -%}
+  {% endif -%}
+  {% if haproxy_backend_servers -%}
+  {% for server in haproxy_backend_servers -%}
   server {{ server }} {{ server }}:{{ haproxy_backend_servers_port }} check-ssl verify none
-{% endfor -%}
-{% else -%}
-{% for server in ansible_play_batch -%}
+  {% endfor -%}
+  {% else -%}
+  {% for server in ansible_play_batch -%}
   server {{ hostvars[server].inventory_hostname_short }} {{ hostvars[server].inventory_hostname_short }}:{{ haproxy_backend_servers_port }} check-ssl verify none
-{% endfor -%}
-{% endif -%}
+  {% endfor -%}
+  {% endif -%}
