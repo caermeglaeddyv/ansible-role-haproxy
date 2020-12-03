@@ -6,9 +6,11 @@ global
   daemon
   ssl-dh-param-file /etc/haproxy/haproxy-dhparam-{{ haproxy_dhparam_size }}.pem
   ssl-default-bind-options {{ haproxy_ssl_default_bind_options }}
-  ssl-default-bind-ciphers {{ haproxy_ssl_default_bind_ciphers }}
+  ssl-default-bind-ciphers {% for sdbc in haproxy_ssl_default_bind_ciphers %}{{ sdbc }}{{ ":" if not loop.last }}{% endfor %}
+
   ssl-default-server-options {{ haproxy_ssl_default_server_options }}
-  ssl-default-server-ciphers {{ haproxy_ssl_default_server_ciphers }}
+  ssl-default-server-ciphers {% for sdsc in haproxy_ssl_default_server_ciphers %}{{ sdsc }}{{ ":" if not loop.last }}{% endfor %}
+
 
 defaults
   log global
