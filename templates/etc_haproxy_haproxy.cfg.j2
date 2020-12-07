@@ -29,8 +29,7 @@ frontend stats
   stats enable
   stats uri /stats
   stats refresh 10s
-{% endif -%}
-
+{% endif %}
 
 frontend {{ haproxy_frontend_name }}
   mode tcp
